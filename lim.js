@@ -1,13 +1,11 @@
 const fs = require('fs');
 const readline = require('readline');
 const { ethers } = require('ethers');
-const dotenv = require('dotenv');
 const axios = require('axios');
 const { HttpsProxyAgent } = require('https-proxy-agent');
+const dotenv = require('dotenv');
+dotenv.config(); 
 
-dotenv.config();
-
-// Objek colors yang diperbarui untuk menyertakan magenta, blue, dan gray
 const colors = {
     reset: "\x1b[0m",
     cyan: "\x1b[36m",
@@ -21,7 +19,6 @@ const colors = {
     gray: "\x1b[90m", // Ditambahkan
 };
 
-// Logger baru seperti yang Anda berikan
 const logger = {
     info: (msg) => console.log(`${colors.cyan}[i] ${msg}${colors.reset}`),
     warn: (msg) => console.log(`${colors.yellow}[!] ${msg}${colors.reset}`),
@@ -101,31 +98,6 @@ const SAMPLE_HEADERS = {
     token: process.env.EXAMPLE_TOKEN || '',
     origin: 'https://blockstreet.money'
 };
-
-async function solveTurnstile(apikey, sitekey, pageurl) {
-    logger.loading('Solving Cloudflare Turnstile captcha...');
-    if (!apikey) throw new Error('2Captcha API key is missing from your .env file.');
-    const submitUrl = 'http://2captcha.com/in.php';
-    const submitData = new URLSearchParams({ key: apikey, method: 'turnstile', sitekey, pageurl, json: 1 });
-    try {
-        const submitRes = await axios.post(submitUrl, submitData);
-        if (submitRes.data.status !== 1) throw new Error(`2Captcha submit failed: ${submitRes.data.request}`);
-        const requestId = submitRes.data.request;
-        const resUrl = `http://2captcha.com/res.php?key=${apikey}&action=get&id=${requestId}&json=1`;
-        while (true) {
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            const resRes = await axios.get(resUrl);
-            if (resRes.data.status === 1) {
-                logger.success('Captcha solved successfully!');
-                return resRes.data.request;
-            }
-            if (resRes.data.request !== 'CAPCHA_NOT_READY') throw new Error(`2Captcha solve failed: ${resRes.data.request}`);
-            logger.loading('Captcha not ready, waiting...');
-        }
-    } catch (error) {
-        throw new Error(`Captcha solving process error: ${error.message}`);
-    }
-}
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -211,7 +183,8 @@ class BlockStreetAPI {
         }
     }
 
-    async login(captchaToken) {
+    // Hapus parameter captchaToken dari login karena sudah tidak digunakan
+    async login() {
         try {
             const useCustom = true;
             let nonce = null;
@@ -304,14 +277,16 @@ class BlockStreetAPI {
 }
 
 
-const forEachWallet = async (wallets, proxies, numTransactions, taskFunction, captchaToken) => {
+// Hapus parameter captchaToken dari forEachWallet
+const forEachWallet = async (wallets, proxies, numTransactions, taskFunction) => {
     let proxyIndex = 0;
     for (const wallet of wallets) {
         const proxy = proxies.length > 0 ? proxies[proxyIndex++ % proxies.length] : null;
         logger.info(`Processing wallet: ${wallet.address}`);
         const api = new BlockStreetAPI(wallet, proxy);
         try {
-            await api.login(captchaToken);
+            // Hapus argumen captchaToken
+            await api.login();
             logger.success(`Wallet ${wallet.address} logged in successfully.`);
             for (let i = 0; i < numTransactions; i++) {
                 logger.info(`--- Running transaction ${i + 1} of ${numTransactions} ---`);
@@ -325,7 +300,8 @@ const forEachWallet = async (wallets, proxies, numTransactions, taskFunction, ca
     }
 };
 
-const processWalletsForDailyRun = async (wallets, proxies, tokenList, numTransactions, captchaToken) => {
+// Hapus parameter captchaToken dari processWalletsForDailyRun
+const processWalletsForDailyRun = async (wallets, proxies, tokenList, numTransactions) => {
     let proxyIndex = 0;
     for (const [index, wallet] of wallets.entries()) {
         const proxy = proxies.length > 0 ? proxies[proxyIndex++ % proxies.length] : null;
@@ -333,7 +309,8 @@ const processWalletsForDailyRun = async (wallets, proxies, tokenList, numTransac
         logger.step(`Processing Wallet ${index + 1}/${wallets.length}: ${wallet.address}`);
         const api = new BlockStreetAPI(wallet, proxy);
         try {
-            await api.login(captchaToken);
+            // Hapus argumen captchaToken
+            await api.login();
             logger.success(`Wallet ${wallet.address} logged in successfully.`);
         } catch (e) {
             logger.error(`Login failed for wallet ${wallet.address}: ${e.message}. Skipping.`);
@@ -388,7 +365,8 @@ const processWalletsForDailyRun = async (wallets, proxies, tokenList, numTransac
     }
 };
 
-const runAllDaily = async (wallets, proxies, tokenList, captchaToken) => {
+// Hapus parameter captchaToken dari runAllDaily
+const runAllDaily = async (wallets, proxies, tokenList) => {
     logger.info("You chose: Run All Features Daily");
     const numTransactionsStr = await question("How many transaction cycles to run per wallet? ");
     const numTransactions = parseInt(numTransactionsStr, 10);
@@ -398,7 +376,8 @@ const runAllDaily = async (wallets, proxies, tokenList, captchaToken) => {
     }
     logger.info(`Will run ${numTransactions} cycle(s) per wallet.`);
     while (true) {
-        await processWalletsForDailyRun(wallets, proxies, tokenList, numTransactions, captchaToken);
+        // Hapus argumen captchaToken
+        await processWalletsForDailyRun(wallets, proxies, tokenList, numTransactions);
         logger.success("Daily run completed for all wallets.");
         await countdown(24 * 60 * 60);
     }
@@ -422,18 +401,12 @@ const main = async () => {
         closeRl(); return;
     }
     logger.success(`Loaded ${wallets.length} wallet(s) from .env file.\n`);
-    let sessionCaptchaToken;
-    try {
-        sessionCaptchaToken = await solveTurnstile(process.env.TWO_CAPTCHA_API_KEY, '0x4AAAAAABpfyUqunlqwRBYN', 'https://blockstreet.money/dashboard');
-        if (!sessionCaptchaToken) throw new Error("Failed to solve the initial captcha.");
-    } catch (error) {
-        logger.critical(`Could not solve initial captcha: ${error.message}`);
-        closeRl(); return;
-    }
+     
     let tokenList = [];
     try {
         const firstApi = new BlockStreetAPI(wallets[0], proxies.length > 0 ? proxies[0] : null);
-        await firstApi.login(sessionCaptchaToken);
+        // Hapus argumen sessionCaptchaToken dari login
+        await firstApi.login();
         logger.success("Initial login successful.");
         logger.loading("Checking-in (Daily Share)...");
         try { await firstApi.share(); logger.success("Daily share complete."); } catch (e) { logger.warn("Daily share failed or skipped: " + e.message); }
@@ -469,7 +442,8 @@ const main = async () => {
         const choice = await question(`1. Swap Token\n2. Supply Token\n3. Withdraw Token\n4. Borrow Token\n5. Repay Token\n6. Run All Features Daily\n7. Exit\n> `);
         if (choice === '7') { logger.info("Exiting bot. Goodbye!"); closeRl(); return; }
         if (choice === '6') {
-            await runAllDaily(wallets, proxies, tokenList, sessionCaptchaToken);
+            // Hapus argumen sessionCaptchaToken
+            await runAllDaily(wallets, proxies, tokenList);
             continue;
         }
         let action, taskFunction;
@@ -509,7 +483,8 @@ const main = async () => {
         const numTransactionsStr = await question(`How many times to run per wallet? `);
         const numTransactions = parseInt(numTransactionsStr, 10);
         if (isNaN(numTransactions) || numTransactions < 1) { logger.error("Invalid number."); continue; }
-        await forEachWallet(wallets, proxies, numTransactions, taskFunction, sessionCaptchaToken);
+        // Hapus argumen sessionCaptchaToken
+        await forEachWallet(wallets, proxies, numTransactions, taskFunction);
         logger.info(`${action} task has been run on all wallets. Returning to menu.`);
     }
 };
