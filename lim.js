@@ -371,12 +371,13 @@ const processWalletsForDailyRun = async (wallets, proxies, tokenList, numTransac
                 for (let j = 0; j < action.count; j++) {
                     try {
                         const randomToken = tokenList[Math.floor(Math.random() * tokenList.length)];
-            _           const amount = getRandomAmount(0.001, 0.0015);
+                        //INI ADALAH BARIS YANG DIPERBAIKI (karakter '_' dihapus)
+                        const amount = getRandomAmount(0.001, 0.0015); 
                         await action.func(randomToken.symbol, amount.toFixed(8));
                         logger.success(`${action.name} #${j+1}: ${amount.toFixed(5)} ${randomToken.symbol} successful.`);
                     } catch (e) {
                         logger.error(`${action.name} #${j+1} failed: ${e.message}`);
-                    }
+                  _ }
                     await randomDelay();
                 }
             }
@@ -459,7 +460,7 @@ const main = async () => {
         logger.critical(`Initial setup failed: ${error.message}`);
         closeRl(); return;
     }
-    while (true) {
+  _ while (true) {
         // Menggunakan logger.section untuk menu
         logger.section('CHOOSE A FEATURE TO RUN');
         const choice = await question(`1. Swap Token\n2. Supply Token\n3. Withdraw Token\n4. Borrow Token\n5. Repay Token\n6. Run All Features Daily\n7. Exit\n> `);
