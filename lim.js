@@ -14,9 +14,9 @@ const colors = {
     red: "\x1b[31m",
     white: "\x1b[37m",
     bold: "\x1b[1m",
-    magenta: "\x1b[35m", // Ditambahkan
-    blue: "\x1b[34m", // Ditambahkan
-    gray: "\x1b[90m", // Ditambahkan
+    magenta: "\x1b[35m", 
+    blue: "\x1b[34m", 
+    gray: "\x1b[90m", 
 };
 
 const logger = {
@@ -30,7 +30,7 @@ const logger = {
     summary: (msg) => console.log(`${colors.green}${colors.bold}[SUMMARY] ${msg}${colors.reset}`),
     banner: () => {
         const border = `${colors.blue}${colors.bold}╔═════════════════════════════════════════╗${colors.reset}`;
-        const title = `${colors.blue}${colors.bold}║     🍉 19Seniman From Insider    🍉     ║${colors.reset}`; // Sedikit penyesuaian spasi
+        const title = `${colors.blue}${colors.bold}║     🍉 19Seniman From Insider    🍉     ║${colors.reset}`; 
         const bottomBorder = `${colors.blue}${colors.bold}╚═════════════════════════════════════════╝${colors.reset}`;
         
         console.log(`\n${border}`);
@@ -107,7 +107,6 @@ const closeRl = () => rl.close();
 const getRandomAmount = (min, max) => Math.random() * (max - min) + min;
 const randomDelay = async () => await sleep(getRandomAmount(5000, 10000));
 
-// Fungsi countdown diperbarui untuk menggunakan logger.countdown
 const countdown = async (seconds) => {
     let remaining = seconds;
     while (remaining > 0) {
@@ -119,8 +118,8 @@ const countdown = async (seconds) => {
         remaining--;
         await sleep(1000);
     }
-    process.stdout.write('\r' + ' '.repeat(50) + '\r'); // Membersihkan baris countdown
-    console.log(); // Pindah ke baris baru
+    process.stdout.write('\r' + ' '.repeat(50) + '\r'); 
+    console.log(); 
 };
 
 class BlockStreetAPI {
@@ -277,7 +276,6 @@ class BlockStreetAPI {
 }
 
 
-// Hapus parameter captchaToken dari forEachWallet
 const forEachWallet = async (wallets, proxies, numTransactions, taskFunction) => {
     let proxyIndex = 0;
     for (const wallet of wallets) {
@@ -300,7 +298,6 @@ const forEachWallet = async (wallets, proxies, numTransactions, taskFunction) =>
     }
 };
 
-// Hapus parameter captchaToken dari processWalletsForDailyRun
 const processWalletsForDailyRun = async (wallets, proxies, tokenList, numTransactions) => {
     let proxyIndex = 0;
     for (const [index, wallet] of wallets.entries()) {
@@ -309,7 +306,6 @@ const processWalletsForDailyRun = async (wallets, proxies, tokenList, numTransac
         logger.step(`Processing Wallet ${index + 1}/${wallets.length}: ${wallet.address}`);
         const api = new BlockStreetAPI(wallet, proxy);
         try {
-            // Hapus argumen captchaToken
             await api.login();
             logger.success(`Wallet ${wallet.address} logged in successfully.`);
         } catch (e) {
