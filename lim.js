@@ -7,6 +7,7 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 
 dotenv.config();
 
+// Objek colors yang diperbarui untuk menyertakan magenta, blue, dan gray
 const colors = {
     reset: "\x1b[0m",
     cyan: "\x1b[36m",
@@ -15,11 +16,12 @@ const colors = {
     red: "\x1b[31m",
     white: "\x1b[37m",
     bold: "\x1b[1m",
-    magenta: "\x1b[35m", 
-    blue: "\x1b[34m", 
-    gray: "\x1b[90m", 
+    magenta: "\x1b[35m", // Ditambahkan
+    blue: "\x1b[34m", // Ditambahkan
+    gray: "\x1b[90m", // Ditambahkan
 };
 
+// Logger baru seperti yang Anda berikan
 const logger = {
     info: (msg) => console.log(`${colors.cyan}[i] ${msg}${colors.reset}`),
     warn: (msg) => console.log(`${colors.yellow}[!] ${msg}${colors.reset}`),
@@ -31,7 +33,7 @@ const logger = {
     summary: (msg) => console.log(`${colors.green}${colors.bold}[SUMMARY] ${msg}${colors.reset}`),
     banner: () => {
         const border = `${colors.blue}${colors.bold}╔═════════════════════════════════════════╗${colors.reset}`;
-        const title = `${colors.blue}${colors.bold}║     🍉 19Seniman From Insider    🍉     ║${colors.reset}`; 
+        const title = `${colors.blue}${colors.bold}║     🍉 19Seniman From Insider    🍉     ║${colors.reset}`; // Sedikit penyesuaian spasi
         const bottomBorder = `${colors.blue}${colors.bold}╚═════════════════════════════════════════╝${colors.reset}`;
         
         console.log(`\n${border}`);
@@ -371,13 +373,12 @@ const processWalletsForDailyRun = async (wallets, proxies, tokenList, numTransac
                 for (let j = 0; j < action.count; j++) {
                     try {
                         const randomToken = tokenList[Math.floor(Math.random() * tokenList.length)];
-                        //INI ADALAH BARIS YANG DIPERBAIKI (karakter '_' dihapus)
                         const amount = getRandomAmount(0.001, 0.0015); 
                         await action.func(randomToken.symbol, amount.toFixed(8));
                         logger.success(`${action.name} #${j+1}: ${amount.toFixed(5)} ${randomToken.symbol} successful.`);
                     } catch (e) {
                         logger.error(`${action.name} #${j+1} failed: ${e.message}`);
-                  _ }
+                    } // <-- BARIS INI DIPERBAIKI (karakter '_' dihapus)
                     await randomDelay();
                 }
             }
@@ -404,16 +405,77 @@ const runAllDaily = async (wallets, proxies, tokenList, captchaToken) => {
 };
 
 const displayAndSelectToken = async (tokenList, promptMessage) => {
-    console.log(colors.cyan + promptMessage + colors.reset);
-    tokenList.forEach((token, index) => console.log(`${index + 1}. ${token.symbol}`));
-    const choiceIndex = parseInt(await question('> '), 10) - 1;
-    return (choiceIndex >= 0 && choiceIndex < tokenList.length) ? tokenList[choiceIndex] : null;
+section: (msg) => {
+        const line = '─'.repeat(40);
+        console.log(`\n${colors.gray}${line}${colors.reset}`);
+        if (msg) console.log(`${colors.white}${colors.bold} ${msg} ${colors.reset}`);
+        console.log(`${colors.gray}${line}${colors.reset}\n`);
+    },
+    countdown: (msg) => process.stdout.write(`\r${colors.blue}[⏰] ${msg}${colors.reset}`),
 };
 
-const main = async () => {
-    logger.banner();
-    const proxies = readAndParseProxies('proxies.txt');
-    if (proxies.length > 0) logger.info(`${proxies.length} valid proxies loaded.`);
+const userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+];
+
+function randomUA() {
+    return userAgents[Math.floor(Math.random() * userAgents.length)];
+}
+
+function parseProxy(proxyLine) {
+    let proxy = proxyLine.trim();
+    if (!proxy) return null;
+    proxy = proxy.replace(/^https?:\/\//, '');
+    const specialMatch = proxy.match(/^([^:]+):(\d+)@(.+):(.+)$/);
+    if (specialMatch) {
+        const [, host, port, user, pass] = specialMatch;
+        return `http://${user}:${pass}@${host}:${port}`;
+    }
+    const parts = proxy.split(':');
+    if (parts.length === 4 && !isNaN(parts[1])) {
+        const [host, port, user, pass] = parts;
+        return `http://${user}:${pass}@${host}:${port}`;
+    }
+    return `http://${proxy}`;
+}
+
+function readAndParseProxies(filePath) {
+    if (!fs.existsSync(filePath)) return [];
+    const lines = fs.readFileSync(filePath, 'utf-8').split('\n');
+    return lines.map(line => parseProxy(line)).filter(Boolean);
+}
+
+const CUSTOM_SIGN_TEXT = `blockstreet.money wants you to sign in with your Ethereum account:
+0x4CBB1421DF1CF362DC618d887056802d8adB7BC0
+
+Welcome to Block Street
+
+URI: https://blockstreet.money
+Version: 1
+Chain ID: 1
+Nonce: Z9YFj5VY80yTwN3n
+Issued At: 2025-10-27T09:49:38.537Z
+Expiration Time: 2025-10-27T09:51:38.537Z`;
+
+const SAMPLE_HEADERS = {
+    timestamp: process.env.EXAMPLE_TIMESTAMP || '',
+    signatureHeader: process.env.EXAMPLE_SIGNATURE || ``,
+    fingerprint: process.env.EXAMPLE_FINGERPRINT || '',
+    abs: process.env.EXAMPLE_ABS || '',
+    token: process.env.EXAMPLE_TOKEN || '',
+    origin: 'https://blockstreet.money'
+};
+
+async function solveTurnstile(apikey, sitekey, pageurl) {
+    logger.loading('Solving Cloudflare Turnstile captcha...');
+    if (!apikey) throw new Error('2Captcha API key is missing from your .env file.');
+    const submitUrl = 'http://2captcha.com/in.php';
+    const submitData = new URLSearchParams({ key: apikey, method: 'turnstile', sitekey, pageurl, json: 1 });
+    try {
+        const submitRes = await axios.post(submitUrl, submitData);
+        if (submitRes.data.status !== 1) throw new Error(`2Captcha submit failed: ${submitRes.data.request}`);
+s.length > 0) logger.info(`${proxies.length} valid proxies loaded.`);
     const wallets = Object.keys(process.env).filter(key => key.startsWith('PRIVATE_KEY_') && process.env[key]).map(key => { try { return new ethers.Wallet(process.env[key]); } catch { logger.warn(`Could not load wallet from ${key}.`); return null; } }).filter(Boolean);
     if (wallets.length === 0) {
         // Menggunakan logger.critical untuk kesalahan fatal
@@ -460,7 +522,9 @@ const main = async () => {
         logger.critical(`Initial setup failed: ${error.message}`);
         closeRl(); return;
     }
-  _ while (true) {
+
+    // BARIS INI DIPERBAIKI (karakter '_' dihapus)
+    while (true) {
         // Menggunakan logger.section untuk menu
         logger.section('CHOOSE A FEATURE TO RUN');
         const choice = await question(`1. Swap Token\n2. Supply Token\n3. Withdraw Token\n4. Borrow Token\n5. Repay Token\n6. Run All Features Daily\n7. Exit\n> `);
@@ -477,22 +541,19 @@ const main = async () => {
             const toToken = await displayAndSelectToken(tokenList, "Select token to swap TO:");
             if (!toToken) { logger.error("Invalid 'to' token selection."); continue; }
             if (fromToken.symbol === toToken.symbol) { logger.error("Cannot swap to the same token."); continue; }
-            const fromAmount = parseFloat(await question(`Amount of ${fromToken.symbol} to swap: `));
-            taskFunction = async (api) => {
+V
                 try {
                     const toAmount = (fromAmount * parseFloat(fromToken.price)) / parseFloat(toToken.price || 1);
                     await api.swap(fromToken.symbol, toToken.symbol, fromAmount, toAmount.toFixed(8));
                     logger.success(`   Swap ${fromAmount} ${fromToken.symbol} -> ${toAmount.toFixed(5)} ${toToken.symbol} successful.`);
-                } catch (e) { logger.error(`   Swap failed: ${e.message}`); }
-            };
+Example
         } else {
             switch (choice) {
                 case '2': action = 'Supply'; break;
                 case '3': action = 'Withdraw'; break;
                 case '4': action = 'Borrow'; break;
                 case '5': action = 'Repay'; break;
-                default: logger.error("Invalid choice."); continue;
-            }
+Read more
             const selectedToken = await displayAndSelectToken(tokenList, `Select a token to ${action}:`);
             if (!selectedToken) { logger.error("Invalid token selection."); continue; }
             const amount = await question(`Amount of ${selectedToken.symbol} to ${action}: `);
