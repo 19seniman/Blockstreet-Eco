@@ -2,7 +2,7 @@
 
 Listing on Monad Q4
 
-➡️ Register https:https://blockstreet.money/dashboard?invite_code=CG3Vxz
+➡️ Register https://blockstreet.money/dashboard?invite_code=CG3Vxz
 
 🔘 connect wallet OKX or Metamask (yg dipake buat monad)
 
